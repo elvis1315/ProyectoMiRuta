@@ -1,0 +1,1516 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mi Ruta - Abancay</title>
+    <!-- Carga de Tailwind CSS con paleta de colores personalizada -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'primary-dark': '#19101b',
+                        'accent-main': '#ed204e', /* Rojo Fuerte */
+                        'accent-secondary': '#fc8734', /* Naranja */
+                        'text-muted': '#7891b1', /* Azul Grisáceo */
+                        'surface-light': '#f4f7f9',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f4f7f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        #app-container {
+            width: 100%;
+            max-width: 420px;
+            height: 100vh;
+            max-height: 900px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            overflow: hidden;
+            background-color: white;
+            position: relative; /* Esta es la clave para que 'position: absolute' funcione en los hijos */
+        }
+        /* Estilos específicos para la aplicación */
+        #google-map-container {
+            flex-grow: 1;
+            width: 100%;
+            height: 100%;
+        }
+        .shadow-lg-custom { box-shadow: 0 10px 15px -3px rgba(237, 32, 78, 0.3), 0 4px 6px -2px rgba(237, 32, 78, 0.05); }
+
+        /* Estilos para Modales (Generales y Rutas) */
+        .modal-overlay {
+            /* NOTA: La posición (absolute) se controla ahora directamente en las clases de Tailwind del HTML. */
+            background-color: rgba(25, 16, 27, 0.8); /* Usando primary-dark con más transparencia */
+            transition: opacity 0.3s ease-in-out;
+            opacity: 0;
+            pointer-events: none;
+            overflow-y: auto; /* Permitir scroll en modales grandes */
+        }
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .modal-container {
+            max-height: 90vh;
+            transform: translateY(100%);
+            transition: transform 0.3s ease-in-out;
+            max-width: 420px;
+            width: 100%;
+        }
+        .modal-overlay.active .modal-container {
+            transform: translateY(0);
+        }
+        
+        /* Estilo para los componentes de Place Picker */
+        .place-picker-input {
+            width: 100%;
+            --gmpx-place-picker-input-padding: 1rem;
+            --gmpx-place-picker-input-border-radius: 0.75rem; /* rounded-xl */
+            --gmpx-place-picker-input-border-color: #d1d5db; /* gray-300 */
+            --gmpx-place-picker-input-focus-ring-color: #ed204e; /* accent-main */
+        }
+        /* Estilo para el logo en el Login (SVG basado en la imagen original) */
+        #logo-login-svg {
+            width: 180px; 
+            height: 180px;
+            margin: 0 auto;
+            filter: drop-shadow(0 0 10px rgba(237, 32, 78, 0.5));
+        }
+        /* Título con degradado */
+        .gradient-text {
+            background-image: linear-gradient(to right, #ed204e, #fc8734);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+    </style>
+    <!-- Iconos de Lucide -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- Carga de Google Maps EXTENDED COMPONENTS API -->
+    <script type="module" src="https://ajax.googleapis.com/ajax/libs/@googlemaps/extended-component-library/0.6.11/index.min.js"></script>
+</head>
+<body>
+
+    <div id="app-container">
+
+        <!-- Contenedor de la Vista de Login -->
+        <div id="login-view" class="h-full flex flex-col justify-center items-center p-8 transition-opacity duration-500 bg-primary-dark">
+            <div class="mb-10 text-center">
+                
+                <!-- Logo de MiRuta (SVG para mejor visualización y consistencia) -->
+                <svg id="logo-login-svg" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <!-- Pin de color principal (Rojo/Naranja de la imagen original) -->
+                    <defs>
+                        <radialGradient id="grad1" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
+                            <stop offset="0%" style="stop-color:#fc8734;stop-opacity:1" />
+                            <stop offset="100%" style="stop-color:#ed204e;stop-opacity:1" />
+                        </radialGradient>
+                    </defs>
+                    <path d="M50 95C25 70 5 50 5 35C5 17 28 5 50 5C72 5 95 17 95 35C95 50 75 70 50 95Z" fill="url(#grad1)"/>
+                    
+                    <!-- Bus (Naranja con detalles) -->
+                    <rect x="30" y="38" width="40" height="15" rx="2" fill="#fc8734" stroke="#19101b" stroke-width="0.5"/>
+                    <!-- Ventana/Parabrisas -->
+                    <rect x="33" y="40" width="12" height="10" fill="#7891b1" stroke="#19101b" stroke-width="0.3"/>
+                    <rect x="55" y="40" width="12" height="10" fill="#7891b1" stroke="#19101b" stroke-width="0.3"/>
+                    <!-- Ruedas -->
+                    <circle cx="35" cy="52" r="3" fill="#19101b"/>
+                    <circle cx="65" cy="52" r="3" fill="#19101b"/>
+                </svg>
+
+
+                <h1 class="text-5xl font-extrabold gradient-text">Mi Ruta</h1>
+                <p class="text-text-muted mt-2">Abancay: Transporte Público Digital</p>
+            </div>
+
+            <div class="w-full max-w-sm space-y-4">
+                <input id="email-input" type="email" placeholder="Correo electrónico"
+                            class="w-full p-4 border border-text-muted rounded-xl focus:ring-2 focus:ring-accent-main focus:border-accent-main transition duration-150 bg-primary-dark text-white"
+                            value="gratuito@ejemplo.com">
+                <input id="password-input" type="password" placeholder="Contraseña"
+                            class="w-full p-4 border border-text-muted rounded-xl focus:ring-2 focus:ring-accent-main focus:border-accent-main transition duration-150 bg-primary-dark text-white"
+                            value="123456">
+                <button id="login-button" onclick="handleLogin()"
+                            class="w-full py-4 bg-accent-main text-white font-bold text-lg rounded-xl shadow-lg-custom hover:bg-red-700 transition duration-200 flex items-center justify-center">
+                    <span id="login-text">INGRESAR</span>
+                    <svg id="login-spinner" class="animate-spin -ml-1 mr-3 h-5 w-5 text-white hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </button>
+                <p id="login-message" class="text-sm text-center text-accent-secondary h-5"></p>
+                <button onclick="openAuthModal('register')" class="block w-full text-center text-sm text-accent-secondary hover:underline py-2">Crear Cuenta</button>
+                <button onclick="openAuthModal('forgot')" class="block w-full text-center text-sm text-accent-main hover:underline">¿Olvidaste tu contraseña?</button>
+            </div>
+        </div>
+
+        <!-- Contenedor de la Vista del Mapa -->
+        <div id="map-view" class="h-full flex flex-col hidden opacity-0 transition-opacity duration-500">
+            
+            <!-- Encabezado / Barra Superior -->
+            <header class="p-4 flex justify-between items-center bg-white border-b border-gray-100 shadow-sm z-40">
+                <div class="flex items-center space-x-2">
+                    <!-- Logo de MiRuta en pequeño (usando el SVG) -->
+                    <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 rounded-full border border-gray-200 bg-surface-light p-1">
+                        <path d="M50 95C25 70 5 50 5 35C5 17 28 5 50 5C72 5 95 17 95 35C95 50 75 70 50 95Z" fill="#ed204e"/>
+                        <rect x="30" y="38" width="40" height="15" rx="2" fill="#fc8734" stroke="#19101b" stroke-width="0.5"/>
+                        <rect x="55" y="40" width="12" height="10" fill="#7891b1" stroke="#19101b" stroke-width="0.3"/>
+                        <circle cx="35" cy="52" r="3" fill="#19101b"/>
+                        <circle cx="65" cy="52" r="3" fill="#19101b"/>
+                    </svg>
+                    <h2 class="text-xl font-bold text-primary-dark">Mi Ruta <span class="text-xs font-normal text-accent-main ml-1">| Abancay</span></h2>
+                </div>
+                <button onclick="openProfileModal()" class="text-text-muted p-2 rounded-full hover:bg-gray-100 transition duration-150">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-user-circle"><path d="M18 20a6 6 0 0 0-12 0"/><circle cx="12" cy="10" r="4"/><circle cx="12" cy="12" r="10"/></svg>
+                </button>
+            </header>
+            
+            <!-- Google Maps API Loader (Clave insertada: AIzaSyAXNoXqxpZF7xRCgz78SYti4_D-UMqEV_4) -->
+            <gmpx-api-loader key="AIzaSyAXNoXqxpZF7xRCgz78SYti4_D-UMqEV_4" solution-channel="GMP_GE_mapsandplacesautocomplete_v2"></gmpx-api-loader>
+
+            <!-- Contenido Principal: Google Map Component -->
+            <main id="map-main" class="flex flex-col flex-grow relative overflow-hidden">
+                <!-- Contenedor del mapa usando el Web Component -->
+                <div id="google-map-container">
+                    <!-- Añado style para ocultar el mensaje de error de facturación de Google Maps,
+                         ya que no podemos resolverlo sin acceso a la consola de GCP. -->
+                    <gmp-map id="map-component" center="-13.6333,-72.8833" zoom="14" map-id="DEMO_MAP_ID" class="h-full w-full" style="--gmpx-map-error-background: transparent; --gmpx-map-error-color: transparent;">
+                        <!-- Marcador del usuario, que se moverá al usar el planificador de rutas -->
+                        <gmp-advanced-marker id="user-marker" position="-13.6333,-72.8833" title="Tu Ubicación" visible="false"></gmp-advanced-marker>
+                        <!-- InfoWindow para mostrar detalles -->
+                        <div id="infowindow-content" class="p-2"></div>
+                    </gmp-map>
+                </div>
+
+                <!-- Botón de Planificador de Rutas (FAB superior) - PREMIUM / GRATUITO -->
+                <button onclick="checkPremiumAccess()" id="plan-route-button" class="absolute top-4 left-1/2 transform -translate-x-1/2 w-11/12 max-w-xs p-3 bg-white text-primary-dark rounded-xl shadow-xl border border-accent-main hover:bg-accent-main/10 transition duration-150 z-20 flex items-center justify-center space-x-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ed204e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-route"><circle cx="6" cy="19" r="3"/><path d="M8.83 17.26c3.29-1.22 5.76-3.8 6.55-7.37L18 3"/><circle cx="18" cy="6" r="3"/><path d="M17.17 6.74c-3.29 1.22-5.76 3.8-6.55 7.37L6 21"/></svg>
+                    <span class="font-semibold text-sm">¿A dónde quieres ir? <span id="premium-tag" class="text-accent-main font-bold text-xs ml-1">(Premium)</span></span>
+                </button>
+                
+                <!-- Botón de Reporte de Incidencia (FAB lateral - Colaborativo) -->
+                <button onclick="showMessage('Abriendo modal de Reporte de Incidencia. Generando feedback colaborativo...')" class="absolute top-1/4 right-2 p-3 bg-accent-secondary text-white rounded-full shadow-lg-custom hover:bg-orange-600 transition duration-150 z-20">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-bell-ring"><path d="M10 5a2 2 0 0 1 4 0v1h.5a3.5 3.5 0 0 1 0 7H4.5a3.5 3.5 0 0 1 0-7H5V6a2 2 0 0 1 4 0z"/><path d="M7.777 15.777l-1.5 1.5M16.223 15.777l1.5 1.5M12 20a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/></svg>
+                </button>
+
+
+                <!-- Botón de Ubicación Actual (FAB inferior) -->
+                <button onclick="zoomToUserLocation()" class="absolute bottom-4 right-4 p-3 bg-white rounded-full shadow-lg-custom hover:bg-gray-50 transition duration-150 z-20">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ed204e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-locate"><line x1="2" x2="5" y1="12" y2="12"/><line x1="19" x2="22" y1="12" y2="12"/><line x1="12" x2="12" y1="2" y2="5"/><line x1="12" x2="12" y1="19" y2="22"/><circle cx="12" cy="12" r="7"/></svg>
+                </button>
+            </main>
+
+            <!-- Barra de Navegación Inferior (Tabs) -->
+            <nav class="flex justify-around bg-white p-2 border-t border-gray-100 shadow-xl z-40">
+                <button onclick="setActiveTab(this)" data-tab="mapa" class="flex flex-col items-center p-2 rounded-xl text-accent-main font-medium">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-map-pin"><path d="M12 18s-4-6-4-8a4 4 0 0 1 8 0c0 2-4 8-4 8z"/><circle cx="12" cy="10" r="2"/></svg>
+                    <span class="text-xs mt-1">Mapa</span>
+                </button>
+                <button onclick="setActiveTab(this)" data-tab="rutas" class="flex flex-col items-center p-2 rounded-xl text-text-muted hover:text-accent-main transition duration-150">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-route"><circle cx="6" cy="19" r="3"/><path d="M8.83 17.26c3.29-1.22 5.76-3.8 6.55-7.37L18 3"/><circle cx="18" cy="6" r="3"/><path d="M17.17 6.74c-3.29 1.22-5.76 3.8-6.55 7.37L6 21"/></svg>
+                    <span class="text-xs mt-1">Guía Rutas</span>
+                </button>
+                <button onclick="setActiveTab(this)" data-tab="paraderos" class="flex flex-col items-center p-2 rounded-xl text-text-muted hover:text-accent-main transition duration-150">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-bus"><path d="M19 17h2"/><path d="m20 17 2 3"/><path d="M2 17h2"/><path d="m2 17-2 3"/><path d="M16 5l-1.5 7h-9L4 5h12Z"/><line x1="6" x2="6" y1="18" y2="21"/><line x1="18" x2="18" y1="18" y2="21"/><path d="M6 12h12"/><path d="M12 2h4l1 3H3l1-3h4"/></svg>
+                    <span class="text-xs mt-1">Paraderos</span>
+                </button>
+                <!-- Nuevo botón "Nosotros" -->
+                <button onclick="setActiveTab(this)" data-tab="nosotros" class="flex flex-col items-center p-2 rounded-xl text-text-muted hover:text-accent-main transition duration-150">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-info"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+                    <span class="text-xs mt-1">Nosotros</span>
+                </button>
+            </nav>
+
+            <!-- Simulación de Contenido de Otras Pestañas (Ocultas) -->
+            <div id="rutas-content" class="absolute inset-0 bg-white p-6 pt-20 hidden z-30 overflow-y-auto">
+                <h3 class="text-xl font-bold mb-4 text-primary-dark">Guía de Rutas (Gratuita)</h3>
+                <div id="route-list-content" class="space-y-4">
+                    <!-- Contenido cargado por JS -->
+                    <p class="text-text-muted">Cargando rutas...</p>
+                </div>
+            </div>
+
+            <div id="paraderos-content" class="absolute inset-0 bg-white p-6 pt-20 hidden z-30 overflow-y-auto">
+                <h3 class="text-xl font-bold mb-4 text-primary-dark">Paraderos Cercanos a tu Ubicación</h3>
+                <div id="nearby-stops-list" class="space-y-4">
+                    <!-- Contenido cargado por JavaScript con los paraderos cercanos -->
+                    <p class="text-text-muted">Cargando paraderos...</p>
+                </div>
+                <button onclick="zoomToNearbyStops()" class="mt-6 w-full py-3 bg-accent-secondary text-white font-bold rounded-xl shadow-lg-custom hover:bg-orange-600 transition duration-200">
+                    Ver Paraderos en el Mapa
+                </button>
+            </div>
+            
+            <!-- NUEVA VISTA: NOSOTROS -->
+            <div id="nosotros-content" class="absolute inset-0 bg-surface-light p-6 pt-20 hidden z-30 overflow-y-auto">
+                <h3 class="text-2xl font-bold mb-2 text-accent-main">Mi Ruta | Sobre Nosotros</h3>
+                <div class="bg-white p-4 rounded-xl shadow-md mb-6">
+                    <h4 class="text-xl font-bold text-primary-dark mb-2">Nuestra Misión </h4>
+                    <p class="text-sm text-primary-dark">
+                        **MiRuta** nace para transformar el transporte público en Abancay. Buscamos combatir la informalidad, la desorganización y la falta de información, ofreciendo una solución digital práctica que conecta a usuarios y conductores en tiempo real.
+                    </p>
+                    <p class="text-xs text-text-muted mt-2">
+                        Nuestro compromiso es con la movilidad segura, eficiente y transparente en nuestra ciudad.
+                    </p>
+                </div>
+
+                <h4 class="text-xl font-bold text-primary-dark mb-4 border-b border-gray-200 pb-2">El Equipo Fundador</h4>
+
+                <div class="space-y-4">
+                    <!-- Miembro 1: Juan Elvis Hurtado Miranda -->
+                    <div class="bg-white p-4 rounded-xl shadow-md flex items-center space-x-4 border-l-4 border-accent-main">
+                        <img src="https://placehold.co/60x60/19101b/ffffff?text=J.H" alt="Juan H." class="w-16 h-16 rounded-full object-cover border-2 border-accent-main">
+                        <div>
+                            <p class="font-bold text-lg text-primary-dark">Juan Elvis Hurtado Miranda</p>
+                            <p class="text-sm text-accent-secondary">Estudiante de Ingeniería Informática y Sistemas</p>
+                            <p class="text-xs text-text-muted">Liderazgo & Desarrollo de Software</p>
+                        </div>
+                    </div>
+                    <!-- Miembro 2: Erick Huaman Borda -->
+                    <div class="bg-white p-4 rounded-xl shadow-md flex items-center space-x-4 border-l-4 border-accent-main">
+                        <img src="https://placehold.co/60x60/19101b/ffffff?text=E.B" alt="Erick H." class="w-16 h-16 rounded-full object-cover border-2 border-accent-main">
+                        <div>
+                            <p class="font-bold text-lg text-primary-dark">Erick Huaman Borda</p>
+                            <p class="text-sm text-accent-secondary">Estudiante de Ingeniería Informática y Sistemas</p>
+                            <p class="text-xs text-text-muted">Arquitectura y Geoposicionamiento</p>
+                        </div>
+                    </div>
+                    <!-- Miembro 3: Ruth Maria Aguirre Huaman -->
+                    <div class="bg-white p-4 rounded-xl shadow-md flex items-center space-x-4 border-l-4 border-accent-secondary">
+                        <img src="https://placehold.co/60x60/fc8734/ffffff?text=R.A" alt="Ruth A." class="w-16 h-16 rounded-full object-cover border-2 border-accent-secondary">
+                        <div>
+                            <p class="font-bold text-lg text-primary-dark">Ruth Maria Aguirre Huaman</p>
+                            <p class="text-sm text-accent-main">Estudiante de Administración</p>
+                            <p class="text-xs text-text-muted">Finanzas y Alianzas Estratégicas</p>
+                        </div>
+                    </div>
+                    <!-- Miembro 4: Betsabé Aguirre Huaman -->
+                    <div class="bg-white p-4 rounded-xl shadow-md flex items-center space-x-4 border-l-4 border-accent-secondary">
+                        <img src="https://placehold.co/60x60/fc8734/ffffff?text=B.A" alt="Betsabé A." class="w-16 h-16 rounded-full object-cover border-2 border-accent-secondary">
+                        <div>
+                            <p class="font-bold text-lg text-primary-dark">Betsabé Aguirre Huaman</p>
+                            <p class="text-sm text-accent-main">Estudiante de Administración</p>
+                            <p class="text-xs text-text-muted">Marketing y Experiencia de Usuario</p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+            
+        </div>
+
+        <!-- Módulo de Planificación de Rutas (Modal/Overlay) - PREMIUM -->
+        <!-- MODIFICADO: Se cambió 'fixed' por 'absolute' para que se contenga en #app-container -->
+        <div id="route-modal" class="absolute inset-0 z-50 flex items-end justify-center modal-overlay">
+            <div class="modal-container bg-white p-6 rounded-t-3xl shadow-2xl">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-bold text-primary-dark">Planificación Premium</h3>
+                    <button onclick="closeRoutePlanner()" class="text-text-muted hover:text-accent-main p-2 rounded-full hover:bg-gray-100">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                    </button>
+                </div>
+                <p class="text-sm text-accent-main font-semibold mb-4 border border-accent-main/50 p-2 rounded-lg bg-accent-main/10 text-center">
+                    Funcionalidad VIP: Sugerencia de la mejor combi.
+                </p>
+                
+                <div class="space-y-4 mb-6">
+                    <!-- Place Picker para Origen (Detectado automáticamente) -->
+                    <gmpx-place-picker id="origin-picker" class="place-picker-input" placeholder="Detectando Ubicación..." title="Origen"></gmpx-place-picker>
+                    <!-- Place Picker para Destino -->
+                    <gmpx-place-picker id="destination-picker" class="place-picker-input" placeholder="Destino (Ej. UNIAB)" title="Destino"></gmpx-place-picker>
+                </div>
+                
+                <button onclick="findRoute()" id="find-route-button"
+                            class="w-full py-3 bg-accent-main text-white font-bold rounded-xl shadow-lg-custom hover:bg-red-700 transition duration-200 flex items-center justify-center space-x-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-search"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                    <span>BUSCAR RUTA INTELIGENTE</span>
+                </button>
+
+                <div id="route-results" class="mt-6 space-y-3">
+                    <p class="text-sm text-text-muted">Sugerencias (Combi, Paradero de Abordaje, Bajada) aparecerán aquí...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Módulo de ACTUALIZACIÓN PREMIUM (Simulación de Pago) -->
+        <!-- MODIFICADO: Se cambió 'fixed' por 'absolute' para que se contenga en #app-container -->
+        <div id="premium-upgrade-modal" class="absolute inset-0 z-50 flex items-end justify-center modal-overlay">
+            <div class="modal-container bg-white p-6 rounded-t-3xl shadow-2xl">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-2xl font-bold text-accent-main">¡Actualiza a PREMIUM!</h3>
+                    <button onclick="closePremiumUpgradeModal()" class="text-text-muted hover:text-primary-dark p-2 rounded-full hover:bg-gray-100">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                    </button>
+                </div>
+                
+                <div class="space-y-4">
+                    <p class="text-primary-dark font-medium text-lg">
+                        <span class="text-accent-main font-extrabold">¡No pierdas tiempo!</span> Con Premium, navega por Abancay sin esfuerzo. <br>
+                        Obtén la **Ruta más Rápida** a dónde quieres ir y **Notificaciones en tiempo real** por solo <span class="text-accent-secondary font-extrabold">S/ 5.00/mes</span>.
+                    </p>
+
+                    <!-- Opciones de Pago (Yape/Plin) -->
+                    <div class="bg-surface-light p-4 rounded-xl border border-gray-200">
+                        <p class="font-bold text-primary-dark mb-2">Paso 1: Selecciona y Paga (S/ 5.00)</p>
+                        <select id="payment-method" onchange="updatePaymentDetails()" class="w-full p-3 border border-gray-300 rounded-lg mb-4 text-primary-dark">
+                            <option value="yape">Pagar con Yape</option>
+                            <option value="plin">Pagar con Plin</option>
+                        </select>
+                        <div class="flex justify-around items-center space-x-4">
+                            <!-- Simulación de QR (cambia dinámicamente) -->
+                            <div class="text-center">
+                                <img id="payment-qr" src="https://placehold.co/100x100/ed204e/ffffff?text=QR+YAPE" alt="QR Yape Plin" class="w-24 h-24 mx-auto rounded-lg mb-1 border-2 border-accent-main">
+                                <span id="payment-app-name" class="text-xs font-semibold text-accent-main">Yape</span>
+                            </div>
+                            <!-- Número de cuenta -->
+                            <div class="text-center">
+                                <p class="text-sm text-text-muted">A nombre de:</p>
+                                <p class="text-lg font-extrabold text-primary-dark mb-1">MiRuta.app</p>
+                                <p class="text-sm text-text-muted">Número:</p>
+                                <p class="text-lg font-extrabold text-accent-secondary">999 999 999</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Formulario de Comprobante -->
+                    <p class="font-semibold text-primary-dark pt-2">Paso 2: Envía tu Comprobante</p>
+                    <input type="text" placeholder="Código de Operación (Opcional)" id="payment-code" class="w-full p-3 border border-gray-300 rounded-lg">
+                    
+                    <div class="flex items-center space-x-3">
+                        <label for="payment-file" class="flex-grow py-3 text-center bg-gray-100 text-text-muted font-medium rounded-xl border border-gray-300 hover:bg-gray-200 transition cursor-pointer">
+                            <span id="file-name">Adjuntar Captura (.jpg/.png)</span>
+                            <input type="file" id="payment-file" accept="image/*" class="hidden" onchange="updateFileName(this)">
+                        </label>
+                    </div>
+
+                    <button onclick="submitPaymentProof()" id="submit-payment-button" class="w-full py-3 bg-accent-main text-white font-bold rounded-xl shadow-lg-custom hover:bg-red-700 transition duration-200 flex items-center justify-center space-x-2">
+                        <span>ENVIAR COMPROBANTE</span>
+                        <svg id="payment-spinner" class="animate-spin h-5 w-5 text-white hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                    </button>
+                    <p id="payment-message" class="text-sm text-center text-text-muted h-4 mt-2"></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Módulo de Autenticación (Registro/Recuperar) -->
+        <!-- MODIFICADO: Se cambió 'fixed' por 'absolute' para que se contenga en #app-container -->
+        <div id="auth-modal" class="absolute inset-0 z-50 flex items-end justify-center modal-overlay">
+            <div class="modal-container bg-white p-6 rounded-t-3xl shadow-2xl">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-bold text-primary-dark" id="auth-modal-title">Registrarse</h3>
+                    <button onclick="closeAuthModal()" class="text-text-muted hover:text-accent-main p-2 rounded-full hover:bg-gray-100">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                    </button>
+                </div>
+
+                <!-- Pestañas de Navegación del Modal -->
+                <div class="flex border-b border-gray-200 mb-4">
+                    <button id="tab-register" onclick="showAuthTab('register')" class="py-2 px-4 text-sm font-semibold border-b-2 border-accent-main text-accent-main">Registro</button>
+                    <button id="tab-forgot" onclick="showAuthTab('forgot')" class="py-2 px-4 text-sm font-semibold border-b-2 border-transparent text-text-muted hover:text-primary-dark">Recuperar Contraseña</button>
+                </div>
+                
+                <!-- Contenido de Registro -->
+                <div id="register-tab-content">
+                    <form class="space-y-3">
+                        <input type="text" placeholder="Nombre" id="reg-name" class="w-full p-3 border border-gray-300 rounded-lg">
+                        <input type="text" placeholder="Apellido" id="reg-lastname" class="w-full p-3 border border-gray-300 rounded-lg">
+                        <div class="flex space-x-3">
+                            <input type="number" placeholder="Edad" id="reg-age" class="w-1/3 p-3 border border-gray-300 rounded-lg">
+                            <select id="reg-gender" class="w-2/3 p-3 border border-gray-300 rounded-lg text-text-muted">
+                                <option value="" disabled selected>Sexo</option>
+                                <option value="Male">Hombre</option>
+                                <option value="Female">Mujer</option>
+                                <option value="Other">Otro</option>
+                            </select>
+                        </div>
+                        <input type="email" placeholder="Correo Electrónico" id="reg-email" class="w-full p-3 border border-gray-300 rounded-lg">
+                        <input type="password" placeholder="Contraseña" id="reg-password" class="w-full p-3 border border-gray-300 rounded-lg">
+                        <input type="password" placeholder="Repetir Contraseña" id="reg-password-confirm" class="w-full p-3 border border-gray-300 rounded-lg">
+                        <p id="register-message" class="text-sm text-center text-red-500 h-4"></p>
+                        <button type="button" onclick="handleRegistration()" class="w-full py-3 bg-accent-main text-white font-bold rounded-xl hover:bg-red-700 transition">REGISTRARSE</button>
+                    </form>
+                </div>
+                
+                <!-- Contenido de Recuperar Contraseña -->
+                <div id="forgot-tab-content" class="hidden">
+                    <p class="text-sm text-text-muted mb-4">Ingresa tu correo electrónico y te enviaremos instrucciones para restablecer tu contraseña.</p>
+                    <input type="email" placeholder="Correo Electrónico" id="forgot-email" class="w-full p-3 border border-gray-300 rounded-lg mb-4">
+                    <p id="forgot-message" class="text-sm text-center text-green-600 h-4"></p>
+                    <button type="button" onclick="handleForgotPassword()" class="w-full py-3 bg-accent-secondary text-white font-bold rounded-xl hover:bg-orange-600 transition">ENVIAR INSTRUCCIONES</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Módulo de Perfil de Usuario -->
+        <!-- MODIFICADO: Se cambió 'fixed' por 'absolute' para que se contenga en #app-container -->
+        <div id="profile-modal" class="absolute inset-0 z-50 flex items-end justify-center modal-overlay">
+            <div class="modal-container bg-white p-6 rounded-t-3xl shadow-2xl">
+                <div class="flex justify-between items-center mb-4 border-b pb-3">
+                    <h3 class="text-xl font-bold text-primary-dark">Mi Perfil</h3>
+                    <button onclick="closeProfileModal()" class="text-text-muted hover:text-accent-main p-2 rounded-full hover:bg-gray-100">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                    </button>
+                </div>
+                
+                <div class="flex flex-col items-center mb-6">
+                    <label for="profile-pic-upload" class="cursor-pointer relative group">
+                        <img id="profile-picture" src="https://placehold.co/100x100/7891b1/ffffff?text=U" alt="Foto de Perfil" class="w-24 h-24 rounded-full object-cover border-4 border-accent-main mb-3">
+                        <div class="absolute inset-0 w-24 h-24 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition duration-300">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-camera"><path d="M14.5 4h1.4c.8 0 1.5.7 1.5 1.5v1.4l-1.8 1.8c-.3.3-.5.4-.7.4h-3.4c-.2 0-.4-.1-.7-.4l-1.8-1.8v-1.4c0-.8.7-1.5 1.5-1.5h1.4"/></svg>
+                        </div>
+                        <input type="file" id="profile-pic-upload" accept="image/*" class="hidden" onchange="handleProfilePicChange(this)">
+                    </label>
+                    <h4 id="profile-name-display" class="text-2xl font-bold text-primary-dark">Usuario MiRuta</h4>
+                    <p id="profile-level" class="text-sm font-semibold px-3 py-1 rounded-full mt-1"></p>
+                </div>
+
+                <!-- Modificar Datos -->
+                <div id="edit-data-section" class="space-y-3 mb-6 border-b pb-4">
+                    <h4 class="font-bold text-primary-dark">Datos Personales</h4>
+                    <input type="text" placeholder="Nombre" id="profile-name-edit" class="w-full p-3 border border-gray-300 rounded-lg">
+                    <input type="text" placeholder="Apellido" id="profile-lastname-edit" class="w-full p-3 border border-gray-300 rounded-lg">
+                    <div class="flex space-x-3">
+                        <input type="number" placeholder="Edad" id="profile-age-edit" class="w-1/3 p-3 border border-gray-300 rounded-lg">
+                        <select id="profile-gender-edit" class="w-2/3 p-3 border border-gray-300 rounded-lg text-primary-dark">
+                            <option value="Male">Hombre</option>
+                            <option value="Female">Mujer</option>
+                            <option value="Other">Otro</option>
+                        </select>
+                    </div>
+                    <button onclick="saveProfileData()" class="w-full py-2 bg-accent-secondary text-white font-bold rounded-lg hover:bg-orange-600 transition">GUARDAR DATOS</button>
+                    <p id="profile-data-message" class="text-sm text-center h-4"></p>
+                </div>
+
+                <!-- Cambiar Contraseña -->
+                <div id="change-password-section" class="space-y-3 mb-6">
+                    <h4 class="font-bold text-primary-dark">Cambiar Contraseña</h4>
+                    <input type="password" placeholder="Contraseña Actual" id="old-password" class="w-full p-3 border border-gray-300 rounded-lg">
+                    <input type="password" placeholder="Nueva Contraseña" id="new-password" class="w-full p-3 border border-gray-300 rounded-lg">
+                    <input type="password" placeholder="Confirmar Nueva Contraseña" id="confirm-new-password" class="w-full p-3 border border-gray-300 rounded-lg">
+                    <button onclick="changePassword()" class="w-full py-2 bg-accent-main text-white font-bold rounded-lg hover:bg-red-700 transition">CAMBIAR CONTRASEÑA</Fbutton>
+                    <p id="password-message" class="text-sm text-center h-4"></p>
+                </div>
+
+
+                <button onclick="handleLogout()" class="w-full py-3 bg-red-500 text-white font-bold rounded-xl hover:bg-red-700 transition flex items-center justify-center space-x-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-log-out"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
+                    <span>CERRAR SESIÓN (LOGOUT)</span>
+                </button>
+            </div>
+        </div>
+
+
+        <!-- Mensaje Modal/Toast (Sustituto de alert() / window.alert()) -->
+        <!-- NOTA: Este toast sigue siendo 'absolute' pero relativo a app-container, lo cual está bien. -->
+        <div id="toast-message" class="absolute bottom-16 left-1/2 transform -translate-x-1/2 bg-primary-dark text-white px-4 py-2 rounded-lg shadow-xl opacity-0 transition-opacity duration-300 pointer-events-none z-50">
+            Mensaje de prueba.
+        </div>
+
+    </div>
+
+    <!-- SCRIPTS -->
+    <script type="module">
+        // --- 1. CONFIGURACIÓN DE FIREBASE (BOILERPLATE MANDATORIO) ---
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        
+        // Coordenadas de Abancay (Aproximadas)
+        const ABANCAY_COORDS = { lat: -13.6333, lng: -72.8833 };
+        
+        // --- DATA REAL DE COMBIS Y PARADEROS (Simulada) ---
+        // Rutas y colores según la solicitud
+        const ABANCAY_ROUTES = [
+            { id: 1, name: "Línea 1", color: '#8B5CF6', label: '(Morado)', path: [{ lat: -13.638, lng: -72.880 }, { lat: -13.630, lng: -72.885 }, { lat: -13.638, lng: -72.890 }], currentStep: 0, currentPos: { lat: -13.638, lng: -72.880 } },
+            { id: 2, name: "Línea 2", color: '#F97316', label: '(Naranja)', path: [{ lat: -13.630, lng: -72.888 }, { lat: -13.642, lng: -72.882 }, { lat: -13.635, lng: -72.875 }], currentStep: 0, currentPos: { lat: -13.630, lng: -72.888 } },
+            { id: 3, name: "Línea 3", color: '#FACC15', label: '(Amarillo)', path: [{ lat: -13.640, lng: -72.878 }, { lat: -13.632, lng: -72.883 }, { lat: -13.638, lng: -72.892 }], currentStep: 0, currentPos: { lat: -13.640, lng: -72.878 } },
+            { id: 4, name: "Línea 4", color: '#EF4444', label: '(Rojo/Blanco)', path: [{ lat: -13.635, lng: -72.892 }, { lat: -13.627, lng: -72.880 }, { lat: -13.645, lng: -72.881 }], currentStep: 0, currentPos: { lat: -13.635, lng: -72.892 } },
+            { id: 5, name: "Línea 5", color: '#38BDF8', label: '(Celeste)', path: [{ lat: -13.627, lng: -72.880 }, { lat: -13.635, lng: -72.877 }, { lat: -13.640, lng: -72.885 }], currentStep: 0, currentPos: { lat: -13.627, lng: -72.880 } },
+            { id: 6, name: "Línea 6", color: '#10B981', label: '(Verde Azul)', path: [{ lat: -13.630, lng: -72.885 }, { lat: -13.645, lng: -72.881 }, { lat: -13.630, lng: -72.888 }], currentStep: 0, currentPos: { lat: -13.630, lng: -72.885 } },
+            { id: 7, name: "Línea 7", color: '#DC2626', label: '(Rojo)', path: [{ lat: -13.638, lng: -72.890 }, { lat: -13.635, lng: -72.877 }, { lat: -13.634, lng: -72.884 }], currentStep: 0, currentPos: { lat: -13.638, lng: -72.890 } },
+            { id: 8, name: "Línea 8", color: '#D946EF', label: '(Morado Rosado)', path: [{ lat: -13.640, lng: -72.885 }, { lat: -13.635, lng: -72.877 }, { lat: -13.638, lng: -72.880 }], currentStep: 0, currentPos: { lat: -13.640, lng: -72.885 } }
+        ];
+        
+        // Paraderos solicitados
+        const MOCK_STOPS = [
+            { id: 1, name: "Plaza de Armas", lat: -13.638, lng: -72.880, routes: ["L1", "L7", "L8"], popular: true },
+            { id: 2, name: "El Arco", lat: -13.640, lng: -72.885, routes: ["L2", "L3", "L8"], popular: true },
+            { id: 3, name: "Guadalupe", lat: -13.630, lng: -72.888, routes: ["L2", "L6"], popular: true },
+            { id: 4, name: "Las Américas", lat: -13.627, lng: -72.880, routes: ["L4", "L5"], popular: false },
+            { id: 5, name: "El Olivo", lat: -13.645, lng: -72.881, routes: ["L1", "L4", "L6"], popular: false },
+            { id: 6, name: "Jr. Arica", lat: -13.635, lng: -72.877, routes: ["L3", "L5", "L7", "L8"], popular: true }
+        ];
+        
+        let liveRoutes = JSON.parse(JSON.stringify(ABANCAY_ROUTES)); // Clonar para movimiento
+        
+        // Configuración global de Firebase
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        let app, db, auth, userId = null;
+        let isFirebaseReady = false;
+
+        // --- Perfil de Usuario Actual (Simulado) ---
+        let currentUser = {
+            isLoggedIn: false,
+            name: "Juan", // Valor por defecto
+            lastName: "Pérez",
+            email: "gratuito@ejemplo.com",
+            password: "123456", // Almacenado solo para simulación de cambio de contraseña
+            age: 25,
+            gender: "Male",
+            isPremium: false
+        };
+        
+        // Variables de Google Maps y Geolocation
+        let mapComponent;
+        let googleMap;
+        let infowindow;
+        let userMarker;
+        let busMarkers = [];
+        let stopMarkers = [];
+        let routePolylines = [];
+        let routePolyline = null; // Para trazar la ruta temporal de "Cómo Llegar"
+        let userLocation = null;
+        let isLocationDetected = false;
+        
+        // Variables para el planificador de rutas
+        let originPlace = null;
+        let destinationPlace = null;
+
+        // Función de inicialización de Firebase (mantenida por requerimiento)
+        async function initializeFirebase() {
+            try {
+                if (firebaseConfig) {
+                    app = initializeApp(firebaseConfig);
+                    db = getFirestore(app);
+                    auth = getAuth(app);
+                    setLogLevel('debug');
+                    await new Promise(resolve => {
+                        const unsubscribe = onAuthStateChanged(auth, async (user) => {
+                            unsubscribe();
+                            if (!user && initialAuthToken) {
+                                try {
+                                    await signInWithCustomToken(auth, initialAuthToken);
+                                } catch (error) {
+                                    await signInAnonymously(auth);
+                                }
+                            } else if (!user) {
+                                await signInAnonymously(auth);
+                            }
+                            isFirebaseReady = true;
+                            resolve();
+                        });
+                    });
+                } else {
+                    isFirebaseReady = true;
+                }
+            } catch (e) {
+                isFirebaseReady = true;
+            }
+        }
+        
+        // --- GEOLOCALIZACIÓN ---
+        function detectUserLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        userLocation = {
+                            lat: position.coords.latitude,
+                            lng: position.coords.longitude
+                        };
+                        isLocationDetected = true;
+                        
+                        const originPicker = document.getElementById('origin-picker');
+                        originPicker.placeholder = "Mi Ubicación Actual (Detectada)";
+                        
+                        // Simular Place Object para el originPlace
+                        originPlace = { location: userLocation, displayName: "Mi Ubicación Actual", formattedAddress: "Ubicación GPS" };
+                        
+                        userMarker.position = userLocation;
+                        userMarker.visible = true;
+                        
+                        if (googleMap) {
+                            googleMap.setCenter(userLocation);
+                            mapComponent.zoom = 16;
+                        }
+                        showMessage("Ubicación detectada y fijada como origen.");
+                    },
+                    (error) => {
+                        showMessage("No se pudo detectar la ubicación. Usando Abancay Centro.");
+                        userLocation = ABANCAY_COORDS;
+                        isLocationDetected = true;
+                        document.getElementById('origin-picker').placeholder = "Origen: Abancay Centro (Defecto)";
+                        originPlace = { location: userLocation, displayName: "Abancay Centro (Defecto)", formattedAddress: "" };
+                        userMarker.position = userLocation;
+                        userMarker.visible = true;
+                    },
+                    { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+                );
+            } else {
+                showMessage("Geolocalización no soportada por el navegador.");
+            }
+        }
+
+
+        // --- 2. GOOGLE MAPS COMPONENTS Y LÓGICA ---
+        
+        async function initializeMapComponents() {
+            await customElements.whenDefined('gmp-map');
+            await customElements.whenDefined('gmpx-place-picker');
+            
+            mapComponent = document.getElementById('map-component');
+            userMarker = document.getElementById('user-marker');
+            infowindow = new google.maps.InfoWindow({ content: document.getElementById('infowindow-content') });
+            
+            googleMap = mapComponent.innerMap;
+            
+            if (googleMap) {
+                googleMap.setOptions({
+                    mapTypeControl: false,
+                    streetViewControl: false,
+                    fullscreenControl: false
+                });
+                
+                loadRoutePolylines();
+                loadStopMarkers();
+                loadRouteList(); 
+                loadNearbyStopsList();
+                
+                animateBusMovement(); 
+            }
+
+            // Configurar listeners para Place Pickers en el modal
+            document.getElementById('origin-picker').addEventListener('gmpx-placechange', (e) => {
+                originPlace = e.detail.place;
+                routeResults.innerHTML = '<p class="text-sm text-text-muted">Sugerencias (Combi, Paradero de Abordaje, Bajada) aparecerán aquí...</p>';
+            });
+            document.getElementById('destination-picker').addEventListener('gmpx-placechange', (e) => {
+                destinationPlace = e.detail.place;
+                routeResults.innerHTML = '<p class="text-sm text-text-muted">Sugerencias (Combi, Paradero de Abordaje, Bajada) aparecerán aquí...</p>';
+            });
+        }
+        
+        // Función para cargar polilíneas de Rutas
+        function loadRoutePolylines(routeId = null) {
+            routePolylines.forEach(p => p.setMap(null));
+            routePolylines = [];
+
+            const routesToDraw = routeId ? ABANCAY_ROUTES.filter(r => r.id === routeId) : ABANCAY_ROUTES;
+
+            routesToDraw.forEach(route => {
+                const polyline = new google.maps.Polyline({
+                    path: route.path,
+                    geodesic: true,
+                    strokeColor: route.color,
+                    strokeOpacity: routeId ? 1.0 : 0.6,
+                    strokeWeight: routeId ? 6 : 4,
+                    map: googleMap,
+                    title: route.name
+                });
+                routePolylines.push(polyline);
+            });
+        }
+        
+        // Función para cargar marcadores de Combis (tiempo real)
+        function loadCombiMarkers(routeId = null) {
+            busMarkers.forEach(m => m.setMap(null));
+            busMarkers = [];
+
+            const routesToShow = routeId ? liveRoutes.filter(r => r.id === routeId) : liveRoutes;
+
+            routesToShow.forEach(route => {
+                const busMarker = new google.maps.Marker({
+                    position: route.currentPos,
+                    map: googleMap,
+                    icon: {
+                        path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+                        fillColor: route.color, 
+                        fillOpacity: 1,
+                        strokeColor: '#19101b',
+                        strokeWeight: 1,
+                        scale: 8
+                    },
+                    title: `Combi ${route.name}`
+                });
+                busMarkers.push(busMarker);
+            });
+        }
+
+        // Función para cargar marcadores de Paraderos
+        function loadStopMarkers() {
+            stopMarkers.forEach(m => m.setMap(null));
+            stopMarkers = [];
+
+            stopMarkers = MOCK_STOPS.map(stop => {
+                const marker = new google.maps.Marker({
+                    position: { lat: stop.lat, lng: stop.lng },
+                    map: googleMap,
+                    icon: {
+                        path: "M12 2c-3.3 0-6 2.7-6 6v7h2v-2h2v2h4v-2h2v2h2V8c0-3.3-2.7-6-6-6zm-4 7h8v-1H8v1zM8 11h8v-1H8v1zM18 17h-2v-2H8v2H6v4h12v-4z",
+                        fillColor: '#fc8734', // Naranja (Paradero)
+                        fillOpacity: 1,
+                        strokeColor: '#19101b', // primary-dark
+                        strokeWeight: 1,
+                        scale: 1.5
+                    },
+                    title: `Paradero: ${stop.name}`
+                });
+                
+                // InfoWindow para mostrar detalles y opción de "Cómo Llegar"
+                marker.addListener('click', () => {
+                    infowindow.setContent(`
+                        <div class="p-1 font-sans">
+                            <p class="font-bold text-primary-dark">${stop.name}</p>
+                            <p class="text-sm text-text-muted">Rutas: ${stop.routes.join(', ')}</p>
+                            <button onclick="simulateRouteToStop({lat: ${stop.lat}, lng: ${stop.lng}}, '${stop.name}')" class="mt-2 text-xs text-accent-main font-medium hover:underline">
+                                Cómo Llegar Aquí
+                            </button>
+                        </div>
+                    `);
+                    infowindow.open(googleMap, marker);
+                });
+
+                return marker;
+            });
+        }
+        
+        // Función de simulación de movimiento en tiempo real
+        function animateBusMovement() {
+            const speedFactor = 0.0000005;
+
+            liveRoutes.forEach((route, index) => {
+                const currentPos = route.currentPos;
+                const nextPointIndex = (route.currentStep + 1) % route.path.length;
+                const targetPos = route.path[nextPointIndex];
+
+                const distanceLat = targetPos.lat - currentPos.lat;
+                const distanceLng = targetPos.lng - currentPos.lng;
+                const magnitude = Math.sqrt(distanceLat * distanceLat + distanceLng * distanceLng);
+
+                if (magnitude < 0.00001) {
+                    route.currentStep = nextPointIndex;
+                    route.currentPos = targetPos;
+                } else {
+                    const stepLat = distanceLat / magnitude * speedFactor;
+                    const stepLng = distanceLng / magnitude * speedFactor;
+                    currentPos.lat += stepLat;
+                    currentPos.lng += stepLng;
+                }
+                
+                let busMarker = busMarkers.find(m => m.title === `Combi ${route.name}`);
+                if (busMarker) {
+                    // Update position only if marker exists (it might be filtered by showRouteOnMap)
+                    busMarker.setPosition(currentPos);
+                }
+            });
+
+            requestAnimationFrame(animateBusMovement);
+        }
+
+        // Función para centrar en ubicación de usuario
+        window.zoomToUserLocation = function() {
+            if (!userLocation) {
+                showMessage("Detectando ubicación, por favor espere.");
+                detectUserLocation();
+                return;
+            }
+            mapComponent.center = userLocation;
+            mapComponent.zoom = 16;
+            userMarker.visible = true;
+            userMarker.position = userLocation;
+            showMessage("Centrando mapa en tu ubicación.");
+        }
+        
+        // Función para simular zoom a paraderos cercanos
+        window.zoomToNearbyStops = function() {
+            if (!mapComponent) return;
+            mapComponent.center = MOCK_STOPS[0]; 
+            mapComponent.zoom = 15;
+            showMessage("Mapa centrado en paraderos cercanos.");
+            setActiveTab({getAttribute: () => 'mapa'});
+        }
+
+        // Función para simular ruta a un paradero desde la ubicación del usuario (CORREGIDA)
+        window.simulateRouteToStop = function(targetPos, targetName) {
+            // Cierra la pestaña de paraderos y vuelve al mapa
+            setActiveTab({getAttribute: () => 'mapa'});
+            closeRoutePlanner();
+            
+            if (!userLocation) {
+                showMessage("Tu ubicación no está disponible para calcular la ruta.");
+                return;
+            }
+            
+            // Limpiar rutas previas (si existe)
+            if (routePolyline) routePolyline.setMap(null); 
+            
+            // Crear nueva ruta (simulación)
+            routePolyline = new google.maps.Polyline({
+                path: [userLocation, targetPos], 
+                geodesic: true,
+                strokeColor: '#fc8734', 
+                strokeOpacity: 0.8,
+                strokeWeight: 6,
+                map: googleMap
+            });
+            
+            // Ajustar el mapa para ver ambos puntos
+            const bounds = new google.maps.LatLngBounds();
+            bounds.extend(userLocation);
+            bounds.extend(targetPos);
+            googleMap.fitBounds(bounds);
+            
+            showMessage(`Ruta a pie trazada hacia el paradero: ${targetName}.`);
+        }
+        
+        // --- FUNCIÓN CENTRAL: Muestra la ruta de una línea específica ---
+        window.showRouteOnMap = function(routeId) {
+            const route = ABANCAY_ROUTES.find(r => r.id === routeId);
+            if (!route) return;
+
+            // 1. Limpiar la ruta temporal si existe
+            if (routePolyline) routePolyline.setMap(null); 
+            
+            // 2. Cargar solo la polilínea de la ruta seleccionada
+            loadRoutePolylines(routeId);
+
+            // 3. Cargar solo la combi en tiempo real de esa línea
+            loadCombiMarkers(routeId); 
+
+            // 4. Asegurar que los paraderos estén visibles
+            loadStopMarkers();
+            
+            // 5. Centrar el mapa en la posición inicial de la ruta
+            const startPos = route.path[0];
+            googleMap.setCenter(startPos);
+            mapComponent.zoom = 15;
+
+            // 6. Cambiar a la vista de mapa
+            setActiveTab({getAttribute: () => 'mapa'});
+            showMessage(`Mostrando ${route.name} (${route.label}) y su unidad en tiempo real.`);
+        }
+
+
+        // --- 3. LÓGICA DE LA APLICACIÓN (UI Y UTILIDADES) ---
+
+        const loginView = document.getElementById('login-view');
+        const mapView = document.getElementById('map-view');
+        const loginButton = document.getElementById('login-button');
+        const loginText = document.getElementById('login-text');
+        const loginSpinner = document.getElementById('login-spinner');
+        const loginMessage = document.getElementById('login-message');
+        const toast = document.getElementById('toast-message');
+        const routeModal = document.getElementById('route-modal');
+        const routeResults = document.getElementById('route-results');
+        const nearbyStopsList = document.getElementById('nearby-stops-list');
+        const routeListContent = document.getElementById('route-list-content');
+        const authModal = document.getElementById('auth-modal');
+        const profileModal = document.getElementById('profile-modal');
+        const premiumUpgradeModal = document.getElementById('premium-upgrade-modal');
+
+
+        // Función para mostrar mensajes temporales (sustituto de alert() / window.alert())
+        window.showMessage = (message) => {
+            toast.textContent = message;
+            toast.classList.remove('opacity-0', 'pointer-events-none');
+            toast.classList.add('opacity-100');
+            
+            setTimeout(() => {
+                toast.classList.remove('opacity-100');
+                toast.classList.add('opacity-0', 'pointer-events-none');
+            }, 3000);
+        };
+        
+        // FUNCIÓN GLOBAL: Actualiza el estado Premium en la UI (CORREGIDO: GLOBAL)
+        window.updatePremiumStatusUI = () => {
+            const tag = document.getElementById('premium-tag');
+            if (currentUser.isPremium) {
+                tag.textContent = '(Activo)';
+                tag.classList.remove('text-accent-main');
+                tag.classList.add('text-green-500');
+            } else {
+                tag.textContent = '(Premium)';
+                tag.classList.remove('text-green-500');
+                tag.classList.add('text-accent-main');
+            }
+        }
+
+        // Función para cambiar la vista (Login -> Mapa)
+        function changeView(viewName) {
+            if (viewName === 'map') {
+                loginView.classList.add('opacity-0');
+                setTimeout(() => {
+                    loginView.classList.add('hidden');
+                    mapView.classList.remove('hidden');
+                    window.updatePremiumStatusUI(); 
+                    setTimeout(() => {
+                        mapView.classList.remove('opacity-0');
+                        lucide.createIcons();
+                        if (googleMap) {
+                            google.maps.event.trigger(googleMap, 'resize');
+                            googleMap.setCenter(userLocation || ABANCAY_COORDS);
+                        }
+                    }, 500);
+                }, 500);
+
+            } else {
+                mapView.classList.add('opacity-0');
+                setTimeout(() => {
+                    mapView.classList.add('hidden');
+                    loginView.classList.remove('hidden');
+                    setTimeout(() => {
+                        loginView.classList.remove('opacity-0');
+                    }, 50);
+                }, 500);
+            }
+        }
+
+        // Manejador de Login Simulado
+        window.handleLogin = async () => {
+            const email = document.getElementById('email-input').value;
+            const password = document.getElementById('password-input').value;
+
+            if (email.length === 0 || password.length === 0) {
+                loginMessage.textContent = "Por favor, complete ambos campos.";
+                return;
+            }
+
+            loginMessage.textContent = "";
+            loginText.classList.add('hidden');
+            loginSpinner.classList.remove('hidden');
+            loginButton.disabled = true;
+
+            await new Promise(resolve => setTimeout(resolve, 1500)); 
+
+            // Simulación de credenciales
+            let userFound = null;
+            if (email === "gratuito@ejemplo.com" && password === "123456") {
+                userFound = { name: "Juan", lastName: "Pérez", email: email, password: password, age: 25, gender: "Male", isPremium: false };
+            } else if (email === "premium@ejemplo.com" && password === "123456") {
+                 userFound = { name: "Ana", lastName: "Gómez", email: email, password: password, age: 32, gender: "Female", isPremium: true };
+            } else {
+                loginMessage.textContent = "Credenciales incorrectas. Intente nuevamente.";
+            }
+
+            if (userFound) {
+                currentUser = { ...userFound, isLoggedIn: true };
+                showMessage(`¡Bienvenido ${userFound.name}! Detectando tu ubicación...`);
+                detectUserLocation();
+                changeView('map');
+            }
+            
+
+            loginText.classList.remove('hidden');
+            loginSpinner.classList.add('hidden');
+            loginButton.disabled = false;
+        };
+
+        // Manejador de Logout Simulado
+        window.handleLogout = async () => {
+            closeProfileModal();
+            showMessage("Cerrando sesión...");
+            await new Promise(resolve => setTimeout(resolve, 1000)); 
+            // Restaurar a estado inicial de cuenta gratuita
+            currentUser = { isLoggedIn: false, name: "Juan", lastName: "Pérez", email: "gratuito@ejemplo.com", password: "123456", age: 25, gender: "Male", isPremium: false };
+            changeView('login');
+            // Resetear inputs para simular un nuevo login
+            document.getElementById('email-input').value = "gratuito@ejemplo.com";
+            document.getElementById('password-input').value = "123456";
+        }
+
+
+        // Lógica de navegación de pestañas (Tabs)
+        const contentElements = {
+            'mapa': document.getElementById('map-main'),
+            'rutas': document.getElementById('rutas-content'),
+            'paraderos': document.getElementById('paraderos-content'),
+            'nosotros': document.getElementById('nosotros-content')
+        };
+        const navButtons = document.querySelectorAll('nav button');
+
+        window.setActiveTab = (button) => {
+            const activeTab = button.getAttribute('data-tab');
+
+            // Ocultar todos los contenidos excepto el mapa
+            Object.values(contentElements).forEach(el => el.classList.add('hidden'));
+            
+            // Si cambiamos de mapa, restauramos la vista normal (todas las rutas)
+            if (activeTab !== 'mapa') {
+                loadRoutePolylines();
+                loadCombiMarkers();
+            }
+            
+            if (activeTab === 'mapa') {
+                contentElements['mapa'].classList.remove('hidden');
+            } else {
+                contentElements['mapa'].classList.add('hidden');
+                contentElements[activeTab].classList.remove('hidden');
+            }
+
+            navButtons.forEach(btn => {
+                const isSelected = btn.getAttribute('data-tab') === activeTab;
+                const svg = btn.querySelector('svg');
+                const accentColor = '#ed204e';
+                const mutedColor = '#7891b1';
+
+                if (isSelected) {
+                    btn.classList.add('text-accent-main', 'font-medium');
+                    btn.classList.remove('text-text-muted');
+                    svg.setAttribute('stroke', accentColor);
+                } else {
+                    btn.classList.remove('text-accent-main', 'font-medium');
+                    btn.classList.add('text-text-muted');
+                    svg.setAttribute('stroke', mutedColor);
+                }
+            });
+            
+            showMessage(`Pestaña: ${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}`);
+        }
+        
+        // --- LÓGICA DE AUTENTICACIÓN Y PERFIL ---
+
+        window.openAuthModal = (tab = 'register') => {
+            authModal.classList.add('active');
+            showAuthTab(tab);
+        }
+
+        window.closeAuthModal = () => {
+            authModal.classList.remove('active');
+            // Limpiar mensajes y campos
+            document.getElementById('register-message').textContent = '';
+            document.getElementById('forgot-message').textContent = '';
+        }
+
+        window.showAuthTab = (tab) => {
+            document.getElementById('register-tab-content').classList.add('hidden');
+            document.getElementById('forgot-tab-content').classList.add('hidden');
+            document.getElementById('tab-register').classList.remove('border-accent-main', 'text-accent-main');
+            document.getElementById('tab-register').classList.add('border-transparent', 'text-text-muted');
+            document.getElementById('tab-forgot').classList.remove('border-accent-main', 'text-accent-main');
+            document.getElementById('tab-forgot').classList.add('border-transparent', 'text-text-muted');
+            
+            if (tab === 'register') {
+                document.getElementById('auth-modal-title').textContent = 'Crear Cuenta';
+                document.getElementById('register-tab-content').classList.remove('hidden');
+                document.getElementById('tab-register').classList.add('border-accent-main', 'text-accent-main');
+                document.getElementById('tab-register').classList.remove('border-transparent', 'text-text-muted');
+            } else if (tab === 'forgot') {
+                document.getElementById('auth-modal-title').textContent = 'Recuperar Contraseña';
+                document.getElementById('forgot-tab-content').classList.remove('hidden');
+                document.getElementById('tab-forgot').classList.add('border-accent-main', 'text-accent-main');
+                document.getElementById('tab-forgot').classList.remove('border-transparent', 'text-text-muted');
+            }
+        }
+
+        window.handleRegistration = () => {
+            const email = document.getElementById('reg-email').value;
+            const pass = document.getElementById('reg-password').value;
+            const passConfirm = document.getElementById('reg-password-confirm').value;
+            const gender = document.getElementById('reg-gender').value;
+            const message = document.getElementById('register-message');
+            message.textContent = '';
+            
+            if (pass !== passConfirm) {
+                message.textContent = 'Las contraseñas no coinciden.';
+                return;
+            }
+            if (pass.length < 6) {
+                message.textContent = 'La contraseña debe tener al menos 6 caracteres.';
+                return;
+            }
+            
+            // Simulación exitosa de registro
+            message.textContent = `¡Registro exitoso para ${email}! Ahora puedes iniciar sesión.`;
+            message.classList.remove('text-red-500');
+            message.classList.add('text-green-600');
+            
+            setTimeout(() => {
+                closeAuthModal();
+            }, 2000);
+        }
+
+        window.handleForgotPassword = () => {
+            const email = document.getElementById('forgot-email').value;
+            const message = document.getElementById('forgot-message');
+            
+            message.textContent = `Instrucciones enviadas a ${email} (Simulación).`;
+            
+            setTimeout(() => {
+                closeAuthModal();
+            }, 3000);
+        }
+
+        // Lógica de Perfil
+
+        window.openProfileModal = () => {
+            if (!currentUser.isLoggedIn) {
+                showMessage("Debes iniciar sesión para ver el perfil.");
+                return;
+            }
+            
+            // Cargar datos al modal
+            document.getElementById('profile-name-display').textContent = `${currentUser.name} ${currentUser.lastName}`;
+            
+            // Los valores de edición se actualizan para reflejar el estado actual:
+            document.getElementById('profile-name-edit').value = currentUser.name;
+            document.getElementById('profile-lastname-edit').value = currentUser.lastName;
+            document.getElementById('profile-age-edit').value = currentUser.age;
+            document.getElementById('profile-gender-edit').value = currentUser.gender;
+
+
+            // Actualizar UI de nivel y foto de perfil
+            const levelElement = document.getElementById('profile-level');
+            const picElement = document.getElementById('profile-picture');
+            
+            if (currentUser.isPremium) {
+                levelElement.textContent = 'PREMIUM';
+                levelElement.classList.remove('bg-gray-200', 'text-primary-dark');
+                levelElement.classList.add('bg-accent-main/20', 'text-accent-main');
+                picElement.src = currentUser.gender === 'Female' ? 'https://placehold.co/100x100/ed204e/ffffff?text=A' : 'https://placehold.co/100x100/ed204e/ffffff?text=J';
+            } else {
+                levelElement.textContent = 'GRATUITA';
+                levelElement.classList.remove('bg-accent-main/20', 'text-accent-main');
+                levelElement.classList.add('bg-gray-200', 'text-primary-dark');
+                picElement.src = currentUser.gender === 'Female' ? 'https://placehold.co/100x100/fc8734/ffffff?text=M' : 'https://placehold.co/100x100/7891b1/ffffff?text=H';
+            }
+            
+            // Limpiar mensajes y campos de contraseña
+            document.getElementById('profile-data-message').textContent = '';
+            document.getElementById('password-message').textContent = '';
+            document.getElementById('old-password').value = '';
+            document.getElementById('new-password').value = '';
+            document.getElementById('confirm-new-password').value = '';
+
+            profileModal.classList.add('active');
+        }
+
+        window.closeProfileModal = () => {
+            profileModal.classList.remove('active');
+        }
+
+        window.handleProfilePicChange = (input) => {
+            const picElement = document.getElementById('profile-picture');
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    picElement.src = e.target.result;
+                    showMessage("Foto de perfil actualizada (simulado).");
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+        
+        window.saveProfileData = () => {
+            const name = document.getElementById('profile-name-edit').value;
+            const lastName = document.getElementById('profile-lastname-edit').value;
+            const age = document.getElementById('profile-age-edit').value;
+            const gender = document.getElementById('profile-gender-edit').value;
+            const message = document.getElementById('profile-data-message');
+
+            if (!name || !lastName || !age || !gender) {
+                message.textContent = "Todos los campos son obligatorios.";
+                message.className = 'text-sm text-center text-red-500 h-4';
+                return;
+            }
+
+            // Simulación de guardado
+            currentUser.name = name;
+            currentUser.lastName = lastName;
+            currentUser.age = parseInt(age);
+            currentUser.gender = gender;
+            
+            message.textContent = "Datos guardados exitosamente.";
+            message.className = 'text-sm text-center text-green-600 h-4';
+            
+            // Refrescar la UI
+            openProfileModal();
+        }
+
+        window.changePassword = () => {
+            const oldPass = document.getElementById('old-password').value;
+            const newPass = document.getElementById('new-password').value;
+            const confirmPass = document.getElementById('confirm-new-password').value;
+            const message = document.getElementById('password-message');
+            message.textContent = '';
+
+            if (oldPass !== currentUser.password) {
+                message.textContent = "La contraseña actual es incorrecta (Simulado).";
+                message.className = 'text-sm text-center text-red-500 h-4';
+                return;
+            }
+            if (newPass.length < 6) {
+                message.textContent = "La nueva contraseña debe tener al menos 6 caracteres.";
+                message.className = 'text-sm text-center text-red-500 h-4';
+                return;
+            }
+            if (newPass !== confirmPass) {
+                message.textContent = "La nueva contraseña y la confirmación no coinciden.";
+                message.className = 'text-sm text-center text-red-500 h-4';
+                return;
+            }
+
+            // Simulación de cambio
+            currentUser.password = newPass; 
+            message.textContent = "Contraseña cambiada exitosamente.";
+            message.className = 'text-sm text-center text-green-600 h-4';
+
+            // Limpiar campos después del éxito
+            document.getElementById('old-password').value = '';
+            document.getElementById('new-password').value = '';
+            document.getElementById('confirm-new-password').value = '';
+        }
+
+
+        // --- LÓGICA DE RESTRICCIÓN PREMIUM Y PAGO ---
+
+        window.openPremiumUpgradeModal = () => {
+            premiumUpgradeModal.classList.add('active');
+            updatePaymentDetails(); // Inicializar detalles de pago
+        }
+
+        window.closePremiumUpgradeModal = () => {
+            premiumUpgradeModal.classList.remove('active');
+            // Resetear el formulario de pago
+            document.getElementById('payment-code').value = '';
+            document.getElementById('payment-file').value = '';
+            document.getElementById('file-name').textContent = 'Adjuntar Captura (.jpg/.png)';
+            document.getElementById('payment-message').textContent = '';
+        }
+
+        window.checkPremiumAccess = () => {
+            if (currentUser.isPremium) {
+                openRoutePlanner();
+            } else {
+                openPremiumUpgradeModal();
+            }
+        }
+        
+        // Función para actualizar QR y nombre de la app dinámicamente
+        window.updatePaymentDetails = () => {
+            const method = document.getElementById('payment-method').value;
+            const qrElement = document.getElementById('payment-qr');
+            const nameElement = document.getElementById('payment-app-name');
+            
+            if (method === 'yape') {
+                qrElement.src = "https://placehold.co/100x100/ed204e/ffffff?text=QR+YAPE";
+                nameElement.textContent = 'Yape';
+                nameElement.classList.remove('text-blue-500');
+                nameElement.classList.add('text-accent-main');
+            } else if (method === 'plin') {
+                qrElement.src = "https://placehold.co/100x100/38BDF8/ffffff?text=QR+PLIN";
+                nameElement.textContent = 'Plin';
+                nameElement.classList.remove('text-accent-main');
+                nameElement.classList.add('text-blue-500');
+            }
+        }
+
+        window.updateFileName = (input) => {
+            const fileNameSpan = document.getElementById('file-name');
+            if (input.files && input.files.length > 0) {
+                fileNameSpan.textContent = input.files[0].name;
+            } else {
+                fileNameSpan.textContent = 'Adjuntar Captura (.jpg/.png)';
+            }
+        }
+
+        window.submitPaymentProof = async () => {
+            const fileInput = document.getElementById('payment-file');
+            const messageElement = document.getElementById('payment-message');
+            const submitButton = document.getElementById('submit-payment-button');
+            const spinner = document.getElementById('payment-spinner');
+
+            if (!fileInput.files || fileInput.files.length === 0) {
+                messageElement.textContent = 'Por favor, adjunta la captura de tu pago.';
+                messageElement.classList.remove('text-green-600', 'text-text-muted', 'font-semibold');
+                messageElement.classList.add('text-red-500');
+                return;
+            }
+
+            // Simular carga y validación
+            messageElement.textContent = 'Enviando y validando comprobante...';
+            messageElement.classList.remove('text-red-500', 'font-semibold');
+            messageElement.classList.add('text-text-muted');
+            
+            submitButton.disabled = true;
+            spinner.classList.remove('hidden');
+            
+            await new Promise(resolve => setTimeout(resolve, 3000)); // Simular tiempo de validación
+
+            // *IMPORTANTE*: NO ACTIVAR PREMIUM INMEDIATAMENTE.
+            // Solo se notifica el estado de revisión.
+            
+            messageElement.textContent = '¡Comprobante enviado con éxito! Estamos revisando el pago. Recibirás una notificación por correo cuando tu cuenta PREMIUM sea activada por el administrador.';
+            messageElement.classList.remove('text-red-500');
+            messageElement.classList.add('text-green-600', 'font-semibold');
+            
+            
+            setTimeout(() => {
+                closePremiumUpgradeModal();
+                showMessage('Revisión de pago en curso. ¡Gracias!');
+            }, 6000);
+            
+            submitButton.disabled = false;
+            spinner.classList.add('hidden');
+        }
+
+
+        // --- 4. LÓGICA DEL PLANIFICADOR DE RUTAS ---
+
+        window.openRoutePlanner = function() {
+            routeModal.classList.add('active');
+        }
+
+        window.closeRoutePlanner = function() {
+            routeModal.classList.remove('active');
+        }
+
+        window.findRoute = async function() {
+            
+            if (!originPlace || !destinationPlace) {
+                routeResults.innerHTML = '<p class="text-sm text-accent-main font-medium">Selecciona un destino válido. El origen es tu ubicación actual.</p>';
+                return;
+            }
+
+            const destinationName = destinationPlace.displayName;
+            
+            const button = document.getElementById('find-route-button');
+            button.disabled = true;
+            button.innerHTML = '<svg class="animate-spin h-5 w-5 text-white mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg><span>BUSCAR RUTA INTELIGENTE</span>';
+
+            await new Promise(resolve => setTimeout(resolve, 2000)); 
+
+            let suggestedRoute = ABANCAY_ROUTES.find(route => 
+                route.path.some(point => {
+                    // Nota: google.maps.geometry.spherical requiere que el Maps API haya cargado completamente.
+                    // Si falla por API, usaremos una lógica simple de simulación de distancia.
+                    let distance = 10000; // Default high value
+                    if (window.google && window.google.maps && window.google.maps.geometry) {
+                        distance = google.maps.geometry.spherical.computeDistanceBetween(
+                            new google.maps.LatLng(destinationPlace.location.lat, destinationPlace.location.lng), 
+                            new google.maps.LatLng(point.lat, point.lng)
+                        );
+                    } else {
+                        // Simulación básica de proximidad
+                        distance = Math.sqrt(Math.pow(destinationPlace.location.lat - point.lat, 2) + Math.pow(destinationPlace.location.lng - point.lng, 2));
+                    }
+                    return distance < 0.005 || distance < 1000; // Si es distancia en metros o en grados (simulado)
+                })
+            );
+
+            let html = '';
+            if (suggestedRoute) {
+                 html = `
+                    <div class="p-4 border rounded-xl shadow-md" style="border-color: ${suggestedRoute.color}; background-color: ${suggestedRoute.color}1A;">
+                        <p class="font-bold text-lg" style="color: ${suggestedRoute.color};">Mejor Opción:</p>
+                        <p class="mt-1 text-sm text-primary-dark">Toma la <span class="font-extrabold" style="color: ${suggestedRoute.color};">${suggestedRoute.name} ${suggestedRoute.label}</span>.</p>
+                        <ul class="text-xs list-disc list-inside text-text-muted mt-2">
+                            <li>**Aborda:** En el paradero de ${MOCK_STOPS[0].name} (a 5 min).</li>
+                            <li>**Baja:** Cerca de ${destinationName}.</li>
+                            <li>**Tiempo Est. Total:** 20 min.</li>
+                        </ul>
+                    </div>
+                    <button onclick="closeRoutePlanner(); simulateRouteToStop(destinationPlace.location, destinationPlace.displayName);" class="mt-3 w-full py-2 bg-accent-main text-white font-medium rounded-lg hover:bg-red-700 transition">Ver Ruta en Mapa</button>
+                 `;
+            } else {
+                html = '<p class="text-sm text-accent-main font-medium">No se encontró una combi que pase cerca de tu destino. Intenta un destino más popular.</p>';
+            }
+            
+            routeResults.innerHTML = html;
+            
+            button.disabled = false;
+            button.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-search"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><span>BUSCAR RUTA INTELIGENTE</span>';
+            showMessage("Búsqueda de ruta completada.");
+        }
+        
+        // --- 5. LÓGICA DE PARADEROS CERCANOS Y RUTAS ---
+
+        function loadRouteList() {
+            let listHtml = '';
+            
+            ABANCAY_ROUTES.forEach((route) => {
+                listHtml += `
+                    <div class="p-4 border rounded-xl shadow-sm hover:bg-surface-light transition duration-150 cursor-pointer" style="border-left: 6px solid ${route.color};" onclick="showRouteOnMap(${route.id})">
+                        <div class="flex justify-between items-center">
+                            <span class="font-bold text-lg" style="color: ${route.color};">${route.name} ${route.label}</span>
+                            <span class="text-sm font-medium bg-accent-secondary/20 text-accent-secondary px-3 py-1 rounded-full">Activa</span>
+                        </div>
+                        <p class="text-sm text-text-muted mt-1">Recorrido simulado por el centro de Abancay.</p>
+                        <p class="text-xs text-text-muted mt-1">Cobertura: Centro, ${MOCK_STOPS.filter(s => route.name in s.routes).map(s => s.name).join(', ')}</p>
+                    </div>
+                `;
+            });
+
+            routeListContent.innerHTML = listHtml;
+        }
+
+
+        function loadNearbyStopsList() {
+            let listHtml = '';
+            
+            MOCK_STOPS.slice(0, 5).forEach((stop, index) => {
+                const distance = index === 0 ? '150m' : index === 1 ? '300m' : '500m';
+                listHtml += `
+                    <div class="flex items-center p-4 border rounded-xl shadow-sm hover:bg-surface-light transition duration-150">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ed204e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-map-pin-line mr-3 flex-shrink-0"><path d="M12 18a.5.5 0 0 1-.5-.5v-4.5a.5.5 0 0 1 1 0v4.5a.5.5 0 0 1-.5.5z"/><path d="M12 21c-4.97 0-9-4.03-9-9s4.03-9 9-9 9 4.03 9 9-4.03 9-9 9zm0-16c-3.87 0-7 3.13-7 7s3.13 7 7 7 7-3.13 7-7-3.13-7-7-7z"/></svg>
+                        <div class="flex-grow">
+                            <p class="font-bold text-primary-dark">${stop.name}</p>
+                            <p class="text-sm text-text-muted">A ${distance}. Rutas: ${stop.routes.join(', ')}.</p>
+                        </div>
+                        <button onclick="simulateRouteToStop({lat: ${stop.lat}, lng: ${stop.lng}}, '${stop.name}')" class="text-xs text-accent-main font-medium hover:underline ml-2 flex-shrink-0">
+                            Cómo Llegar
+                        </button>
+                    </div>
+                `;
+            });
+
+            nearbyStopsList.innerHTML = listHtml;
+        }
+
+        // --- 6. INICIALIZACIÓN GENERAL ---
+        document.addEventListener('DOMContentLoaded', () => {
+            // Inicialización de componentes (se ejecuta después de que el DOM está cargado)
+            initializeFirebase();
+            initializeMapComponents();
+            lucide.createIcons();
+
+            // Configuración inicial de vistas
+            loginView.classList.remove('hidden', 'opacity-0');
+            mapView.classList.add('hidden', 'opacity-0');
+
+            // Resetear modales
+            routeModal.classList.remove('active');
+            authModal.classList.remove('active');
+            profileModal.classList.remove('active');
+            premiumUpgradeModal.classList.remove('active');
+
+            // Set default login fields for simulation
+            document.getElementById('email-input').value = "gratuito@ejemplo.com";
+            document.getElementById('password-input').value = "123456";
+        });
+
+    </script>
+
+</body>
+</html>
